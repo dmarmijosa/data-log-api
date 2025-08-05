@@ -1,10 +1,17 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, RequestMethod } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Configurar archivos estáticos
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
+    index: false, // No servir index.html automáticamente para rutas de API
+  });
 
   // Enable global validation pipes
   app.useGlobalPipes(
@@ -18,8 +25,14 @@ async function bootstrap() {
   // Enable CORS for cross-origin requests
   app.enableCors();
 
-  // Set global prefix for all routes
-  app.setGlobalPrefix('api');
+  // Set global prefix for all routes (except HomeController and AppController root)
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: '', method: RequestMethod.GET },
+      { path: 'logs', method: RequestMethod.GET },
+      { path: 'health', method: RequestMethod.GET },
+    ],
+  });
 
   // Swagger/OpenAPI configuration
   const config = new DocumentBuilder()

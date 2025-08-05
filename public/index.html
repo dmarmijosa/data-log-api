@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Log Viewer - Sistema de Logs</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <!-- Custom CSS -->
+    <style>
+      :root {
+        --primary-color: #6366f1;
+        --secondary-color: #8b5cf6;
+        --dark-color: #1e293b;
+        --light-bg: #f8fafc;
+      }
+
+      body {
+        background: linear-gradient(135deg, var(--light-bg) 0%, #e2e8f0 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .navbar {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .log-card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .log-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      .log-content {
+        background-color: #f8f9fa;
+        border-left: 4px solid var(--primary-color);
+        font-family: 'Courier New', monospace;
+      }
+
+      .loading-spinner {
+        display: none;
+      }
+
+      .empty-state {
+        color: #6b7280;
+      }
+
+      .stats-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .refresh-btn {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+        border: none;
+        transition: all 0.3s ease;
+      }
+
+      .refresh-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 15px -3px rgba(99, 102, 241, 0.4);
+      }
+
+      .badge-custom {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+      }
+
+      .search-input {
+        border-radius: 25px;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+      }
+
+      .search-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+      }
+
+      .btn-group .btn {
+        transition: all 0.2s ease;
+      }
+
+      .btn-group .btn:hover {
+        transform: scale(1.1);
+      }
+
+      .floating-btn {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+        border: none;
+        transition: all 0.3s ease;
+      }
+
+      .floating-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5);
+      }
+
+      .modal-content {
+        border: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      }
+
+      .modal-header {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+        color: white;
+        border-bottom: none;
+      }
+
+      .modal-header .btn-close {
+        filter: invert(1);
+      }
+
+      .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+      }
+
+      .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: none;
+        border-left: 4px solid #28a745;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark">
+      <div class="container">
+        <span class="navbar-brand mb-0 h1">
+          <i class="bi bi-journal-text me-2"></i>
+          Data Log Viewer
+        </span>
+        <div class="d-flex align-items-center">
+          <span class="text-white-50 me-3" id="lastUpdate">
+            <i class="bi bi-clock me-1"></i>
+            Última actualización: --
+          </span>
+          <button class="btn refresh-btn btn-light" onclick="loadLogs()">
+            <i class="bi bi-arrow-clockwise me-1"></i>
+            Actualizar
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container my-5">
+      <!-- Stats Section -->
+      <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+          <div class="card stats-card">
+            <div class="card-body text-center">
+              <i class="bi bi-files text-primary fs-1"></i>
+              <h4 class="mt-2 mb-1" id="totalLogs">0</h4>
+              <p class="text-muted mb-0">Total de Logs</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="card stats-card">
+            <div class="card-body text-center">
+              <i class="bi bi-clock-history text-success fs-1"></i>
+              <h4 class="mt-2 mb-1" id="recentLogs">0</h4>
+              <p class="text-muted mb-0">Hoy</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="card stats-card">
+            <div class="card-body text-center">
+              <i class="bi bi-person-check text-info fs-1"></i>
+              <h4 class="mt-2 mb-1">API</h4>
+              <p class="text-muted mb-0">
+                Estado:
+                <span class="badge bg-success" id="apiStatus">Online</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <div class="card stats-card">
+            <div class="card-body text-center">
+              <i class="bi bi-database text-warning fs-1"></i>
+              <h4 class="mt-2 mb-1">DB</h4>
+              <p class="text-muted mb-0">
+                Estado:
+                <span class="badge bg-success" id="dbStatus">Online</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search and Filter Section -->
+      <div class="row mb-4">
+        <div class="col-md-8">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input
+              type="text"
+              class="form-control search-input border-start-0"
+              placeholder="Buscar en logs..."
+              id="searchInput"
+            />
+          </div>
+        </div>
+        <div class="col-md-4">
+          <select class="form-select" id="sortOrder">
+            <option value="desc">Más recientes primero</option>
+            <option value="asc">Más antiguos primero</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div class="text-center loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-2 text-muted">Cargando logs...</p>
+      </div>
+
+      <!-- Logs Container -->
+      <div id="logsContainer">
+        <!-- Los logs se cargarán aquí dinámicamente -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="text-center empty-state d-none" id="emptyState">
+        <i class="bi bi-inbox display-1 text-muted"></i>
+        <h3 class="mt-3 text-muted">No hay logs disponibles</h3>
+        <p class="text-muted">Los logs aparecerán aquí cuando se creen.</p>
+        <button class="btn btn-primary" onclick="loadLogs()">
+          <i class="bi bi-arrow-clockwise me-1"></i>
+          Intentar de nuevo
+        </button>
+      </div>
+    </div>
+
+    <!-- Botón flotante para agregar nuevo log -->
+    <button
+      type="button"
+      class="btn btn-primary floating-btn position-fixed"
+      data-bs-toggle="modal"
+      data-bs-target="#createLogModal"
+      style="
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+      "
+      title="Crear nuevo log"
+    >
+      <i class="bi bi-plus-lg fs-4"></i>
+    </button>
+
+    <!-- Modal para crear/editar log -->
+    <div
+      class="modal fade"
+      id="createLogModal"
+      tabindex="-1"
+      aria-labelledby="createLogModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="createLogModalLabel">
+              <i class="bi bi-plus-circle me-2"></i>
+              Crear Nuevo Log
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="logForm">
+              <input type="hidden" id="logId" value="" />
+              <div class="mb-3">
+                <label for="logTitle" class="form-label">Título</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="logTitle"
+                  placeholder="Ingrese el título del log"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label for="logContent" class="form-label">Contenido</label>
+                <textarea
+                  class="form-control"
+                  id="logContent"
+                  rows="6"
+                  placeholder="Ingrese el contenido del log"
+                  required
+                ></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              <i class="bi bi-x-circle me-1"></i>
+              Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveLog()">
+              <i class="bi bi-check-circle me-1"></i>
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de confirmación para eliminar -->
+    <div
+      class="modal fade"
+      id="deleteLogModal"
+      tabindex="-1"
+      aria-labelledby="deleteLogModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteLogModalLabel">
+              <i class="bi bi-trash me-2"></i>
+              Confirmar Eliminación
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>¿Está seguro de que desea eliminar este log?</p>
+            <div class="alert alert-warning">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              Esta acción no se puede deshacer.
+            </div>
+            <div id="deleteLogInfo" class="bg-light p-3 rounded"></div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              <i class="bi bi-x-circle me-1"></i>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              onclick="confirmDelete()"
+            >
+              <i class="bi bi-trash me-1"></i>
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+      const API_BASE_URL = '/api';
+      let allLogs = [];
+      let filteredLogs = [];
+
+      // Función para cargar los logs desde la API
+      async function loadLogs() {
+        const spinner = document.getElementById('loadingSpinner');
+        const container = document.getElementById('logsContainer');
+        const emptyState = document.getElementById('emptyState');
+
+        try {
+          // Mostrar spinner
+          spinner.style.display = 'block';
+          container.innerHTML = '';
+          emptyState.classList.add('d-none');
+
+          // Llamar a la API
+          const response = await fetch(`${API_BASE_URL}/text-logs`);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          allLogs = data.data || [];
+
+          // Actualizar estadísticas
+          updateStats(allLogs);
+
+          // Aplicar filtros y mostrar logs
+          applyFilters();
+
+          // Actualizar timestamp
+          updateLastUpdate();
+        } catch (error) {
+          console.error('Error loading logs:', error);
+          showError(
+            'Error al cargar los logs. Verifique que la API esté funcionando.',
+          );
+          updateApiStatus(false);
+        } finally {
+          spinner.style.display = 'none';
+        }
+      }
+
+      // Función para actualizar las estadísticas
+      function updateStats(logs) {
+        const totalLogs = logs.length;
+        const today = new Date().toDateString();
+        const recentLogs = logs.filter(
+          (log) => new Date(log.createdAt).toDateString() === today,
+        ).length;
+
+        document.getElementById('totalLogs').textContent = totalLogs;
+        document.getElementById('recentLogs').textContent = recentLogs;
+
+        updateApiStatus(true);
+      }
+
+      // Función para aplicar filtros
+      function applyFilters() {
+        const searchTerm = document
+          .getElementById('searchInput')
+          .value.toLowerCase();
+        const sortOrder = document.getElementById('sortOrder').value;
+
+        // Filtrar por búsqueda
+        filteredLogs = allLogs.filter(
+          (log) =>
+            log.title.toLowerCase().includes(searchTerm) ||
+            log.content.toLowerCase().includes(searchTerm),
+        );
+
+        // Ordenar
+        filteredLogs.sort((a, b) => {
+          const dateA = new Date(a.createdAt);
+          const dateB = new Date(b.createdAt);
+          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+
+        // Mostrar logs
+        displayLogs(filteredLogs);
+      }
+
+      // Función para mostrar los logs
+      function displayLogs(logs) {
+        const container = document.getElementById('logsContainer');
+        const emptyState = document.getElementById('emptyState');
+
+        if (logs.length === 0) {
+          container.innerHTML = '';
+          emptyState.classList.remove('d-none');
+          return;
+        }
+
+        emptyState.classList.add('d-none');
+
+        const logsHTML = logs
+          .map(
+            (log) => `
+                <div class="card log-card mb-3" id="log-${log.id}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-text text-primary me-2"></i>
+                            ${escapeHtml(log.title)}
+                        </h5>
+                        <div class="d-flex align-items-center">
+                            <span class="badge badge-custom me-2">ID: ${log.id}</span>
+                            <small class="text-muted me-3">
+                                <i class="bi bi-calendar me-1"></i>
+                                ${formatDate(log.createdAt)}
+                            </small>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="editLog(${log.id})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteLog(${log.id})" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-content p-3 rounded">
+                            ${escapeHtml(log.content)}
+                        </div>
+                        ${
+                          log.updatedAt !== log.createdAt
+                            ? `
+                            <small class="text-muted mt-2 d-block">
+                                <i class="bi bi-pencil me-1"></i>
+                                Última modificación: ${formatDate(log.updatedAt)}
+                            </small>
+                        `
+                            : ''
+                        }
+                    </div>
+                </div>
+            `,
+          )
+          .join('');
+
+        container.innerHTML = logsHTML;
+      }
+
+      // Función para mostrar errores
+      function showError(message) {
+        const container = document.getElementById('logsContainer');
+        container.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `;
+      }
+
+      // Función para actualizar el estado de la API
+      function updateApiStatus(isOnline) {
+        const apiStatus = document.getElementById('apiStatus');
+        const dbStatus = document.getElementById('dbStatus');
+
+        if (isOnline) {
+          apiStatus.textContent = 'Online';
+          apiStatus.className = 'badge bg-success';
+          dbStatus.textContent = 'Online';
+          dbStatus.className = 'badge bg-success';
+        } else {
+          apiStatus.textContent = 'Offline';
+          apiStatus.className = 'badge bg-danger';
+          dbStatus.textContent = 'Unknown';
+          dbStatus.className = 'badge bg-secondary';
+        }
+      }
+
+      // Función para actualizar el timestamp
+      function updateLastUpdate() {
+        const now = new Date();
+        document.getElementById('lastUpdate').innerHTML = `
+                <i class="bi bi-clock me-1"></i>
+                Última actualización: ${now.toLocaleTimeString()}
+            `;
+      }
+
+      // Función para formatear fechas
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString('es-ES', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+
+      // Función para escapar HTML
+      function escapeHtml(text) {
+        const map = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;',
+        };
+        return text.replace(/[&<>"']/g, function (m) {
+          return map[m];
+        });
+      }
+
+      // Event Listeners
+      document
+        .getElementById('searchInput')
+        .addEventListener('input', applyFilters);
+      document
+        .getElementById('sortOrder')
+        .addEventListener('change', applyFilters);
+
+      // Variables globales para el modal de eliminación
+      let logToDelete = null;
+
+      // Función para crear un nuevo log
+      function createNewLog() {
+        document.getElementById('logId').value = '';
+        document.getElementById('logTitle').value = '';
+        document.getElementById('logContent').value = '';
+        document.getElementById('createLogModalLabel').innerHTML =
+          '<i class="bi bi-plus-circle me-2"></i>Crear Nuevo Log';
+      }
+
+      // Función para editar un log
+      async function editLog(id) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/text-logs/${id}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const log = await response.json();
+
+          document.getElementById('logId').value = log.id;
+          document.getElementById('logTitle').value = log.title;
+          document.getElementById('logContent').value = log.content;
+          document.getElementById('createLogModalLabel').innerHTML =
+            '<i class="bi bi-pencil me-2"></i>Editar Log';
+
+          const modal = new bootstrap.Modal(
+            document.getElementById('createLogModal'),
+          );
+          modal.show();
+        } catch (error) {
+          console.error('Error loading log:', error);
+          alert('Error al cargar el log para editar');
+        }
+      }
+
+      // Función para guardar log (crear o actualizar)
+      async function saveLog() {
+        const id = document.getElementById('logId').value;
+        const title = document.getElementById('logTitle').value.trim();
+        const content = document.getElementById('logContent').value.trim();
+
+        if (!title || !content) {
+          alert('Por favor complete todos los campos');
+          return;
+        }
+
+        try {
+          const data = { title, content };
+          const url = id
+            ? `${API_BASE_URL}/text-logs/${id}`
+            : `${API_BASE_URL}/text-logs`;
+          const method = id ? 'PATCH' : 'POST';
+
+          const response = await fetch(url, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // Cerrar modal
+          const modal = bootstrap.Modal.getInstance(
+            document.getElementById('createLogModal'),
+          );
+          modal.hide();
+
+          // Recargar logs
+          await loadLogs();
+
+          // Mostrar mensaje de éxito
+          showSuccess(
+            id ? 'Log actualizado correctamente' : 'Log creado correctamente',
+          );
+        } catch (error) {
+          console.error('Error saving log:', error);
+          alert('Error al guardar el log');
+        }
+      }
+
+      // Función para mostrar el modal de eliminación
+      async function deleteLog(id) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/text-logs/${id}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const log = await response.json();
+          logToDelete = id;
+
+          document.getElementById('deleteLogInfo').innerHTML = `
+                    <h6><strong>Título:</strong> ${escapeHtml(log.title)}</h6>
+                    <p><strong>Contenido:</strong> ${escapeHtml(log.content.substring(0, 100))}${log.content.length > 100 ? '...' : ''}</p>
+                    <small class="text-muted">ID: ${log.id} | Creado: ${formatDate(log.createdAt)}</small>
+                `;
+
+          const modal = new bootstrap.Modal(
+            document.getElementById('deleteLogModal'),
+          );
+          modal.show();
+        } catch (error) {
+          console.error('Error loading log:', error);
+          alert('Error al cargar el log para eliminar');
+        }
+      }
+
+      // Función para confirmar la eliminación
+      async function confirmDelete() {
+        if (!logToDelete) return;
+
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/text-logs/${logToDelete}`,
+            {
+              method: 'DELETE',
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // Cerrar modal
+          const modal = bootstrap.Modal.getInstance(
+            document.getElementById('deleteLogModal'),
+          );
+          modal.hide();
+
+          // Animación de eliminación
+          const logElement = document.getElementById(`log-${logToDelete}`);
+          if (logElement) {
+            logElement.style.transition = 'all 0.3s ease';
+            logElement.style.transform = 'translateX(-100%)';
+            logElement.style.opacity = '0';
+
+            setTimeout(() => {
+              loadLogs();
+            }, 300);
+          } else {
+            loadLogs();
+          }
+
+          logToDelete = null;
+          showSuccess('Log eliminado correctamente');
+        } catch (error) {
+          console.error('Error deleting log:', error);
+          alert('Error al eliminar el log');
+        }
+      }
+
+      // Función para mostrar mensaje de éxito
+      function showSuccess(message) {
+        const container = document.getElementById('logsContainer');
+        const successAlert = document.createElement('div');
+        successAlert.className =
+          'alert alert-success alert-dismissible fade show';
+        successAlert.innerHTML = `
+                <i class="bi bi-check-circle me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+        container.insertAdjacentElement('beforebegin', successAlert);
+
+        // Auto-remover después de 3 segundos
+        setTimeout(() => {
+          if (successAlert.parentNode) {
+            successAlert.remove();
+          }
+        }, 3000);
+      }
+
+      // Event listener para el botón flotante
+      document.addEventListener('DOMContentLoaded', function () {
+        // Configurar el botón flotante para crear nuevo log
+        const floatingBtn = document.querySelector(
+          '[data-bs-target="#createLogModal"]',
+        );
+        if (floatingBtn) {
+          floatingBtn.addEventListener('click', createNewLog);
+        }
+      });
+
+      // Event Listeners
+      document
+        .getElementById('searchInput')
+        .addEventListener('input', applyFilters);
+      document
+        .getElementById('sortOrder')
+        .addEventListener('change', applyFilters);
+
+      // Cargar logs al inicio
+      document.addEventListener('DOMContentLoaded', function () {
+        loadLogs();
+
+        // Auto-refresh cada 30 segundos
+        setInterval(loadLogs, 30000);
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', function (e) {
+        // Ctrl/Cmd + R para refrescar
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+          e.preventDefault();
+          loadLogs();
+        }
+
+        // Ctrl/Cmd + F para enfocar búsqueda
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+          e.preventDefault();
+          document.getElementById('searchInput').focus();
+        }
+      });
+    </script>
+  </body>
+</html>

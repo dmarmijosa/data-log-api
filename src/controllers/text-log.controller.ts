@@ -61,7 +61,7 @@ export class TextLogController {
     type: [TextLog],
   })
   findAll() {
-    return this.textLogService.findAll();
+    return this.textLogService.findAllWithMeta();
   }
 
   @Get('count')

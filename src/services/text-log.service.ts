@@ -23,6 +23,22 @@ export class TextLogService {
     });
   }
 
+  async findAllWithMeta(): Promise<{
+    data: TextLog[];
+    total: number;
+    timestamp: string;
+  }> {
+    const data = await this.textLogRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      data,
+      total: data.length,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   async findOne(id: number): Promise<TextLog> {
     const textLog = await this.textLogRepository.findOne({
       where: { id },
