@@ -1,10 +1,10 @@
 {
-  "name": "nueva-app",
+  "name": "data-log-api",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "NestJS API for storing and retrieving text data",
+  "author": "dmarmijosa",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

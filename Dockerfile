@@ -1,5 +1,5 @@
 # Multi-stage build for optimized production image
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
@@ -36,6 +36,9 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 
+# Copy health check file
+COPY --chown=nestjs:nodejs health-check.js ./
+
 # Switch to non-root user
 USER nestjs
 
@@ -48,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]

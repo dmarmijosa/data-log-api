@@ -52,10 +52,17 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 Application is running on: http://localhost:${port}/api`);
+  console.log(
+    `🏥 Health check available at: http://localhost:${port}/api/health`,
+  );
   console.log(
     `📖 Swagger documentation available at: http://localhost:${port}/api/docs`,
   );
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  console.error('❌ Error starting application:', error);
+  process.exit(1);
+});
